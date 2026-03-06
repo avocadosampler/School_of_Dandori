@@ -23,6 +23,10 @@ ENV/
 .git/
 .gitignore
 
+# Docker
+Dockerfile
+.dockerignore
+docker-compose.yml
 
 # Documentation
 *.md
@@ -42,5 +46,4 @@ Thumbs.db
 
 # Logs
 *.log 
-
 
