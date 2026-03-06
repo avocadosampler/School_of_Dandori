@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>School of Dandori - Course Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="logo-section">
+                    <img src="{{ url_for('static', filename='logo.png') }}" alt="School of Dandori Logo" class="logo">
+                    <div class="title-group">
+                        <h1 class="title-small">School of</h1>
+                        <h1 class="title-large">Dandori</h1>
+                    </div>
+                </div>
+                
+                <div class="filters-section">
+                    <div class="dropdown-group">
+                        <span class="filter-icon">🍃</span>
+                        <select id="type-select" onchange="updateFilters()">
+                            <option value="All">What do you want to learn?</option>
+                        </select>
+                        <span class="filter-icon">📍</span>
+                        <input type="text" id="postcode-input" placeholder="Postcode/Place" onchange="updateFilters()">
+                        <span class="filter-icon">🌿</span>
+                        <select id="distance-select" onchange="updateFilters()">
+                            <option value="All">How far away?</option>
+                            <option value="10">Within 10 miles</option>
+                            <option value="25">Within 25 miles</option>
+                            <option value="50">Within 50 miles</option>
+                            <option value="100">Within 100 miles</option>
+                        </select>
+                        <span class="filter-icon">💰</span>
+                        <select id="cost-select" onchange="updateFilters()">
+                            <option value="All">What price?</option>
+                            <option value="50">Up to £50</option>
+                            <option value="60">Up to £60</option>
+                            <option value="70">Up to £70</option>
+                            <option value="80">Up to £80</option>
+                            <option value="90">Up to £90</option>
+                            <option value="100">Up to £100</option>
+                            <option value="150">Up to £150</option>
+                        </select>
+                    </div>
+                </div>
+
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="hero">
+                <h2 class="hero-title">
+                    Permission to <span class="italic">play again.</span>
+                </h2>
+                <p class="hero-subtitle">
+                    Discover our curated curriculum of whimsical crafts and culinary arts.
+                </p>
+                <p class="filter-prompt" id="filterPrompt">
+                    ✨ Use the filters above to explore our courses
+                </p>
+            </div>
+
+            <div class="courses-grid" id="coursesGrid"></div>
+        </main>
+        <div id="chat-widget" class="chat-closed">
+            <div id="chat-header" onclick="toggleChat()">
+                <span>Ask me for help!</span>
+                <button id="toggle-btn">+</button>
+            </div>
+            <div id="chat-body">
+                <div id="chat-window"></div>
+                <div class="chat-input-area">
+                    <input type="text" id="user-input" placeholder="Ask a question..." onkeypress="handleKeyPress(event)">
+                    <button onclick="sendMessage()">Send</button>
+                </div>
+            </div>
+        </div>
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="footer-content">
+                <div class="footer-top">
+                    <div class="footer-logo-section">
+                        <img src="{{ url_for('static', filename='logo.png') }}" alt="School of Dandori Logo" class="logo">
+                        <div>
+                            <p class="footer-title">School of Dandori</p>
+                            <p class="footer-locations">All over the UK</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="footer-bottom">
+                    <p class="copyright">Permission to play again.</p>
+                </div>
+            </div>
+        </footer>
+
+        <!-- Detail Modal -->
+        <div class="modal" id="courseModal">
+            <div class="modal-backdrop"></div>
+            <div class="modal-content" id="modalContent"></div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script>
+        // Populate Dropdowns on Page Load
+        async function initFilters() {
+            try {
+                const response = await fetch('/api/filters');
+                const data = await response.json();
+                
+                const typeSelect = document.getElementById('type-select');
+
+                data.types.forEach(type => {
+                    if (type !== 'All') typeSelect.innerHTML += `<option value="${type}">${type}</option>`;
+                });
+                
+                // Start with centered header and use cropped logo
+                const header = document.querySelector('.header');
+                const headerLogo = document.querySelector('.header .logo');
+                header.classList.add('centered');
+                if (headerLogo && headerLogo.tagName === 'IMG') {
+                    headerLogo.src = "{{ url_for('static', filename='logo_cropped.png') }}";
+                }
+            } catch (e) {
+                console.error("Filter loading failed", e);
+            }
+        }
+
+        // Update courses based on filter selection
+        async function updateFilters() {
+            const postcode = document.getElementById('postcode-input').value.trim();
+            const distance = document.getElementById('distance-select').value;
+            const type = document.getElementById('type-select').value;
+            const maxCost = document.getElementById('cost-select').value;
+            const grid = document.getElementById('coursesGrid');
+            const filterPrompt = document.getElementById('filterPrompt');
+            const header = document.querySelector('.header');
+            const headerLogo = document.querySelector('.header .logo');
+
+            // Only show courses if a filter is selected
+            if (type === 'All' && (!postcode || distance === 'All') && maxCost === 'All') {
+                grid.innerHTML = '';
+                if (filterPrompt) filterPrompt.style.display = 'block';
+                header.classList.add('centered');
+                // Use cropped logo when centered
+                if (headerLogo && headerLogo.tagName === 'IMG') {
+                    headerLogo.src = "{{ url_for('static', filename='logo_cropped.png') }}";
+                }
+                return;
+            }
+
+            // Remove centered class and hide the filter prompt when courses are shown
+            header.classList.remove('centered');
+            // Use regular logo when not centered
+            if (headerLogo && headerLogo.tagName === 'IMG') {
+                headerLogo.src = "{{ url_for('static', filename='logo.png') }}";
+            }
+            if (filterPrompt) filterPrompt.style.display = 'none';
+
+            try {
+                // Build query parameters
+                let queryParams = `type=${type}`;
+                if (postcode && distance !== 'All') {
+                    queryParams += `&postcode=${encodeURIComponent(postcode)}&distance=${distance}`;
+                }
+                if (maxCost !== 'All') {
+                    queryParams += `&maxCost=${maxCost}`;
+                }
+                
+                // Fetch filtered data
+                const response = await fetch(`/api/courses?${queryParams}`);
+                const courses = await response.json();
+
+                // Clear the existing grid
+                grid.innerHTML = '';
+                
+                // Show message if no courses found
+                if (courses.length === 0) {
+                    grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #5d8e48; font-size: 1.25rem;">No courses found matching your criteria. Try adjusting your filters.</p>';
+                    return;
+                }
+
+                // Rebuild the cards with correct field names
+                courses.forEach(course => {
+                    const summary = course.course_description.length > 140
+                        ? course.course_description.substring(0, 140) + '...'
+                        : course.course_description;
+                    
+                    // Calculate distance if available
+                    const distanceText = course.distance ? ` (${course.distance} miles away)` : '';
+                    
+                    const card = `
+                        <div class="course-card" onclick='showCourseDetails(${JSON.stringify(course).replace(/'/g, "&apos;")})'>
+                            <div>
+                                <div class="card-header">
+                                    <span class="course-type">${course.course_type}</span>
+                                    <span class="course-location">${course.course_location.toUpperCase()}${distanceText}</span>
+                                </div>
+                                <h3 class="course-title">${course.course_name}</h3>
+                                <p class="course-description">${summary}</p>
+                            </div>
+                            
+                            <div class="card-footer">
+                                <div class="instructor-info">
+                                    <span class="instructor-label">Mentor</span>
+                                    <span class="instructor-name">${course.course_instructor}</span>
+                                </div>
+                                <button class="arrow-btn">→</button>
+                            </div>
+                        </div>
+                    `;
+                    grid.innerHTML += card;
+                });
+            } catch (e) {
+                console.error("Failed to load courses", e);
+            }
+        }
+
+        // Show course details modal (from script.js)
+        function showCourseDetails(course) {
+            const modal = document.getElementById('courseModal');
+            const modalContent = document.getElementById('modalContent');
+            
+            const objectives = course.course_objectives.split('. ').filter(o => o.trim());
+            const materials = course.course_materials.split('\n');
+            const skills = course.course_skills.split(',');
+            
+            modalContent.innerHTML = `
+                <button class="close-btn" onclick="closeModal()">×</button>
+                
+                <div class="modal-header">
+                    <img src="{{ url_for('static', filename='logo_cropped.png') }}" alt="School of Dandori" class="modal-logo">
+                    <h1 class="modal-title">${course.course_name}</h1>
+                    <div class="title-divider"></div>
+                    
+                    <div class="info-grid">
+                        <div class="info-card">
+                            <span class="info-label">Instructor</span>
+                            <span class="info-value">${course.course_instructor}</span>
+                        </div>
+                        <div class="info-card">
+                            <span class="info-label">Location</span>
+                            <span class="info-value">${course.course_location}</span>
+                        </div>
+                        <div class="info-card">
+                            <span class="info-label">Category</span>
+                            <span class="info-value">${course.course_type}</span>
+                        </div>
+                        <div class="info-card cost">
+                            <span class="info-label">Fee</span>
+                            <span class="info-value">${course.course_cost}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-body">
+                    <div>
+                        <section class="section">
+                            <h2 class="section-title">
+                                <span class="title-bar"></span>
+                                The Journey
+                            </h2>
+                            <p class="section-text">${course.course_description}</p>
+                        </section>
+
+                        <section class="section">
+                            <h2 class="section-title">
+                                <span class="title-bar"></span>
+                                Learning Objectives
+                            </h2>
+                            <ul class="objectives-list">
+                                ${objectives.map(obj => `
+                                    <li class="objective-item">
+                                        <div class="objective-dot">
+                                            <div class="objective-dot-inner"></div>
+                                        </div>
+                                        <span class="objective-text">${obj.trim()}${obj.endsWith('.') ? '' : '.'}</span>
+                                    </li>
+                                `).join('')}
+                            </ul>
+                        </section>
+                    </div>
+
+                    <div class="sidebar">
+                        <section class="materials-section">
+                            <h2 class="sidebar-title">Included Materials</h2>
+                            <div class="materials-list">
+                                ${materials.map(mat => `
+                                    <div class="material-item">
+                                        <span class="checkmark">✓</span>
+                                        ${mat.trim()}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </section>
+
+                        <section class="skills-section">
+                            <div class="skills-bg">🎓</div>
+                            <h2 class="sidebar-title">Skills Gained</h2>
+                            <div class="skills-list">
+                                ${skills.map(skill => `
+                                    <span class="skill-tag">${skill.trim()}</span>
+                                `).join('')}
+                            </div>
+                            
+                        </section>
+                        
+                        <div class="course-id">
+                            <p class="course-id-text">Class Reference: ${course.course_id}</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        // Close modal
+        function closeModal() {
+            const modal = document.getElementById('courseModal');
+            modal.classList.remove('active');
+            document.body.style.overflow = 'auto';
+        }
+
+        // Close modal on backdrop click
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('modal-backdrop')) {
+                closeModal();
+            }
+        });
+
+        // Chat UI Toggle
+        function toggleChat() {
+            const widget = document.getElementById('chat-widget');
+            const btn = document.getElementById('toggle-btn');
+            widget.classList.toggle('chat-closed');
+            btn.innerText = widget.classList.contains('chat-closed') ? '+' : '−';
+        }
+
+        function handleKeyPress(e) {
+            if (e.key === 'Enter') sendMessage();
+        }
+
+        // Send chat message
+        async function sendMessage() {
+            const input = document.getElementById('user-input');
+            const chatWindow = document.getElementById('chat-window');
+            const query = input.value.trim();
+            if (!query) return;
+
+            // Add user message
+            chatWindow.innerHTML += `<div class="user-msg"><strong>You:</strong> ${query}</div>`;
+            input.value = '';
+
+            // Add thinking animation
+            const thinkingId = 'thinking-' + Date.now();
+            chatWindow.innerHTML += `
+                <div class="ai-msg thinking-msg" id="${thinkingId}">
+                    <strong>AI:</strong> 
+                    <span class="thinking-dots">
+                        <span class="dot">.</span><span class="dot">.</span><span class="dot">.</span>
+                    </span>
+                </div>
+            `;
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+
+            try {
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({query: query})
+                });
+                const data = await response.json();
+                
+                // Remove thinking animation
+                const thinkingMsg = document.getElementById(thinkingId);
+                if (thinkingMsg) thinkingMsg.remove();
+                
+                // Parse markdown-style bold (**text**)
+                const formattedAnswer = data.answer.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                
+                // Add AI response
+                chatWindow.innerHTML += `<div class="ai-msg"><strong>AI:</strong> ${formattedAnswer}</div>`;
+                chatWindow.scrollTop = chatWindow.scrollHeight;
+            } catch (err) {
+                // Remove thinking animation on error
+                const thinkingMsg = document.getElementById(thinkingId);
+                if (thinkingMsg) thinkingMsg.remove();
+                
+                chatWindow.innerHTML += `<div class="error">Error connecting to assistant.</div>`;
+            }
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', initFilters);
+    </script>
+</body>
+</html>

@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  school-of-dandori:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: school-of-dandori-prod
+    ports:
+      - "5000:5000"
+    environment:
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - FLASK_ENV=production
+      - PYTHONUNBUFFERED=1
+    volumes:
+      # Persist ChromaDB data
+      - chroma_data:/app/chroma_db
+      # Persist course data
+      - ./courses:/app/courses:ro
+      - ./courses_data.csv:/app/courses_data.csv:ro
+    restart: always
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:5000/', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    # Security: Run as non-root user
+    user: "1000:1000"
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 1G
+
+volumes:
+  chroma_data:
+    driver: local

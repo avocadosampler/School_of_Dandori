@@ -1,0 +1,24 @@
+# Web Framework
+Flask==3.0.0
+Werkzeug==3.0.1
+
+# LLM and AI
+openai>=1.12.0
+python-dotenv==1.0.0
+
+# Vector Database
+chromadb==1.5.0
+numpy<2.0.0  # ChromaDB compatibility
+
+# PDF Processing
+PyMuPDF==1.23.8
+
+# Geocoding and Distance Calculations
+geopy==2.4.1
+
+# Standard library dependencies (included for completeness)
+# csv, json, pathlib, time, math, os are built-in
+
+# Optional: Production server (uncomment for production)
+# gunicorn==21.2.0
+# waitress==2.1.2
