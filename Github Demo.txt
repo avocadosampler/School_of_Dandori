@@ -10,3 +10,4 @@ Update the following line from "Hello, World!" to "Hello, Github!":
 Hello, Github!
 
 Next, add a new line at the end of this file:
+I have learned some things today.
