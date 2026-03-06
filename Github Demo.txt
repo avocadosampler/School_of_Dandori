@@ -1,0 +1,12 @@
+--- Updating a file's contents ---
+Step 1: Open the file.
+Step 2: Modify some lines or add new lines.
+Step 3: Save the file.
+Step 4: Stage the changes.
+Step 5: Commit the changes.
+Step 6: Push the changes.
+
+Update the following line from "Hello, World!" to "Hello, Github!":
+Hello, world!
+
+Next, add a new line at the end of this file:
