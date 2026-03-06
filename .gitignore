@@ -38,7 +38,6 @@ Thumbs.db
 
 # Environment files (SECURITY: Don't copy .env into Docker image)
 .env
-.env.*
 
 # Logs
 *.log 
